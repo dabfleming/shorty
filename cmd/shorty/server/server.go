@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -63,13 +62,13 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/goog">goog</a><br />
 		<a href="/twitter">twitter</a><br />
 		<a href="/fb">fb</a><br />
-		<a href="/foo">foo</a><br />
+		<a href="/foo">foo (not found)</a><br />
 		`)
 }
 
 func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	url, err := s.lookupShortURL(ctx, r.URL.Path[1:])
+	url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
 	if err != nil {
 		log.Printf("Error looking up url: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -83,10 +82,6 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect)
-}
-
-func (s *Server) lookupShortURL(ctx context.Context, slug string) (string, error) {
-	return s.ds.GetURLBySlug(ctx, slug)
 }
 
 func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
