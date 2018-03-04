@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/dabfleming/shorty/internal/datastore"
 )
 
 var (
@@ -13,16 +16,19 @@ var (
 // Server models our http server
 type Server struct {
 	mux *http.ServeMux
+	ds  datastore.Datastore
 }
 
 // New returns a new server
-func New() (Server, error) {
+func New(ds datastore.Datastore) (Server, error) {
 	urls = map[string]string{
 		"foo": "https://www.google.ca",
 		"bar": "https://twitter.com",
 	}
 
-	s := Server{}
+	s := Server{
+		ds: ds,
+	}
 
 	s.mux = http.NewServeMux()
 	s.mux.HandleFunc("/info/", s.logMiddleware(s.infoHandler))
@@ -54,14 +60,22 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 	// request for /, serve up some links for testing
 	fmt.Fprint(w, `
 		<a href="/info/">info/</a><br />
+		<a href="/goog">goog</a><br />
+		<a href="/twitter">twitter</a><br />
+		<a href="/fb">fb</a><br />
 		<a href="/foo">foo</a><br />
-		<a href="/bar">bar</a><br />
-		<a href="/baz">baz</a><br />
 		`)
 }
 
 func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
-	url := s.lookupShortURL(r.URL.Path[1:])
+	ctx := r.Context()
+	url, err := s.lookupShortURL(ctx, r.URL.Path[1:])
+	if err != nil {
+		log.Printf("Error looking up url: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	if url == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -71,13 +85,8 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (s *Server) lookupShortURL(short string) string {
-	for key, value := range urls {
-		if key == short {
-			return value
-		}
-	}
-	return ""
+func (s *Server) lookupShortURL(ctx context.Context, slug string) (string, error) {
+	return s.ds.GetURLBySlug(ctx, slug)
 }
 
 func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
