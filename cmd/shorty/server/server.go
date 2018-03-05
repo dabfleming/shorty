@@ -140,7 +140,7 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 	// Request to save to DB
 	log.Printf("Requested '%v' link to '%v'.", slug, url) // TODO Remove dubug output
 	err = s.ds.SaveNewURL(ctx, slug, url)
-	if strings.HasPrefix(err.Error(), "Error 1062") {
+	if err != nil && strings.HasPrefix(err.Error(), "Error 1062") {
 		// Duplicate slug
 		w.WriteHeader(http.StatusConflict)
 		fmt.Fprintf(w, "Error, the short url '%v' is already in use.", slug)
