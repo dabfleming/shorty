@@ -8,20 +8,23 @@ import (
 
 	"github.com/dabfleming/shorty/internal/datastore"
 	"github.com/dabfleming/shorty/internal/slugs"
+	"github.com/ua-parser/uap-go/uaparser"
 )
 
 const defaultSlugLength = 7
 
 // Server models our http server
 type Server struct {
-	mux *http.ServeMux
-	ds  datastore.Datastore
+	mux    *http.ServeMux
+	ds     datastore.Datastore
+	parser *uaparser.Parser
 }
 
 // New returns a new server
-func New(ds datastore.Datastore) (Server, error) {
+func New(ds datastore.Datastore, parser *uaparser.Parser) (Server, error) {
 	s := Server{
-		ds: ds,
+		ds:     ds,
+		parser: parser,
 	}
 
 	s.mux = http.NewServeMux()
@@ -76,7 +79,7 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
+	id, url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
 	if err != nil {
 		log.Printf("Error looking up url: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -86,6 +89,14 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	if url == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+
+	// Track the visit
+	ua := r.Header.Get("User-Agent")
+	client := s.parser.Parse(ua)
+	err = s.ds.TrackHit(ctx, id, client, r.RemoteAddr)
+	if err != nil {
+		log.Printf("Error tracking hit: %v", err)
 	}
 
 	w.Header().Set("Location", url)

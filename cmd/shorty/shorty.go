@@ -6,6 +6,7 @@ import (
 	"github.com/dabfleming/shorty/cmd/shorty/server"
 	"github.com/dabfleming/shorty/internal/datastore"
 	"github.com/dabfleming/shorty/internal/platform/mysql"
+	"github.com/ua-parser/uap-go/uaparser"
 )
 
 func main() {
@@ -21,8 +22,11 @@ func main() {
 		log.Fatalf("Error creating datastore: %v", err)
 	}
 
+	// User-Agent Parser
+	parser := uaparser.NewFromSaved()
+
 	// Start Server
-	s, err := server.New(ds)
+	s, err := server.New(ds, parser)
 	if err != nil {
 		log.Fatalf("Error creating server: %v", err)
 	}
