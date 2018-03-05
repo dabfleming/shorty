@@ -12,6 +12,7 @@ services:
       - "3306"
     volumes:
       - database_data:/var/lib/mysql
+      - ./data/sql/shorty.sql:/docker-entrypoint-initdb.d/shorty.sql
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: shorty
