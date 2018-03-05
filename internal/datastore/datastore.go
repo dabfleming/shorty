@@ -8,6 +8,7 @@ import (
 type Datastore interface {
 	// URLs
 	GetURLBySlug(ctx context.Context, slug string) (string, error)
+	SaveNewURL(ctx context.Context, slug string, url string) error
 }
 
 type datastore struct {
@@ -36,4 +37,9 @@ func (ds datastore) GetURLBySlug(ctx context.Context, slug string) (string, erro
 	}
 
 	return url, nil
+}
+
+func (ds datastore) SaveNewURL(ctx context.Context, slug string, url string) error {
+	_, err := ds.db.Exec(`INSERT INTO url (slug, url) VALUES (?, ?)`, slug, url)
+	return err
 }
