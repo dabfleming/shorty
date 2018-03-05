@@ -98,9 +98,7 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	ua := r.Header.Get("User-Agent")
 	client := s.parser.Parse(ua)
 	ip := r.RemoteAddr
-	if idx := strings.Index(ip, ":"); idx != -1 {
-		ip = ip[0:idx]
-	}
+	// TODO Remove port from address
 	err = s.ds.TrackHit(ctx, url.ID, client, ip)
 	if err != nil {
 		log.Printf("Error tracking hit: %v", err)
