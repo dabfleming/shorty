@@ -94,7 +94,11 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	// Track the visit
 	ua := r.Header.Get("User-Agent")
 	client := s.parser.Parse(ua)
-	err = s.ds.TrackHit(ctx, url.ID, client, r.RemoteAddr)
+	ip := r.RemoteAddr
+	if idx := strings.Index(ip, ":"); idx != -1 {
+		ip = ip[0:idx]
+	}
+	err = s.ds.TrackHit(ctx, url.ID, client, ip)
 	if err != nil {
 		log.Printf("Error tracking hit: %v", err)
 	}
