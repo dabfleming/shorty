@@ -7,11 +7,14 @@ import (
 	"strings"
 
 	"github.com/dabfleming/shorty/internal/datastore"
+	"github.com/dabfleming/shorty/internal/slugs"
 )
 
 var (
 	urls map[string]string
 )
+
+const defaultSlugLength = 7
 
 // Server models our http server
 type Server struct {
@@ -59,7 +62,7 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// request for /, serve up some links for testing
-	fmt.Fprint(w, `
+	fmt.Fprint(w, `<!DOCTYPE html>
 		<html>
 		<head><title>Shorty</title></head>
 		<body>
@@ -131,10 +134,9 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 	// Check for requested slug
 	slug := r.PostForm.Get("slug")
 	if slug == "" {
-		// TODO Generate a random slug
-		w.WriteHeader(http.StatusNotImplemented)
-		fmt.Fprint(w, "TODO: Generate random slug")
-		return
+		// Generate a random slug
+		// TODO Cope better with collisions
+		slug = slugs.Random(defaultSlugLength)
 	}
 
 	// Request to save to DB
@@ -154,7 +156,13 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `Link created: <a href="/%v">/%v</a> now links to <pre>%v</pre>`, slug, slug, url)
+	fmt.Fprintf(w, `<!DOCTYPE html>
+		<html>
+		<head><title>Shorty</title></head>
+		<body>
+		<h2>Link Created:</h2>
+		<a href="/%v">/%v</a> now links to: <pre>%v</pre>
+		</body></html>`, slug, slug, url)
 }
 
 func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
