@@ -66,8 +66,8 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 		Requested short url (optional): http://SERVER_NAME/<input type="text" name="slug" /><br />
 		<input type="submit" />
 		</form>
-		<h2>Debug Links</h2>
-		<a href="/info/">info/</a><br />
+		<h2><a href="/info/">View Link Stats</a></h2>
+		<h2>Debug/Testing Links</h2>
 		<a href="/goog">goog</a><br />
 		<a href="/twitter">twitter</a><br />
 		<a href="/fb">fb</a><br />
@@ -79,14 +79,14 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id, url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
+	url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
 	if err != nil {
 		log.Printf("Error looking up url: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if url == "" {
+	if url.URL == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -94,12 +94,12 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	// Track the visit
 	ua := r.Header.Get("User-Agent")
 	client := s.parser.Parse(ua)
-	err = s.ds.TrackHit(ctx, id, client, r.RemoteAddr)
+	err = s.ds.TrackHit(ctx, url.ID, client, r.RemoteAddr)
 	if err != nil {
 		log.Printf("Error tracking hit: %v", err)
 	}
 
-	w.Header().Set("Location", url)
+	w.Header().Set("Location", url.URL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
@@ -168,5 +168,65 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "TODO: Implement info tools")
+	ctx := r.Context()
+	slug := strings.TrimPrefix(r.URL.Path, "/info/")
+
+	if len(slug) > 0 {
+		s.infoDetailHandler(w, r)
+		return
+	}
+
+	vs, err := s.ds.GetVisitCounts(ctx)
+	if err != nil {
+		log.Printf("Error getting visitor counts: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, `<!DOCTYPE html>
+		<html>
+		<head><title>Shorty</title></head>
+		<body>
+		<h2>Visits:</h2>
+		<table border="2">
+		<tr><th>Short URL</th><th>Full URL</th><th>Visit Count</th></tr>
+		`)
+	for _, v := range vs {
+		fmt.Fprintf(w, `<tr><td><a href="/info/%v">%v</a></td><td>%v</td><td>%v</td></tr>`, v.Slug, v.Slug, v.URL, v.Count)
+	}
+	fmt.Fprint(w, `</table>
+		</body>
+		</html>
+		`)
+}
+
+func (s *Server) infoDetailHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := strings.TrimPrefix(r.URL.Path, "/info/")
+
+	log.Printf("Lookup on slug: %v", slug)
+	url, visits, err := s.ds.GetVisits(ctx, slug)
+	if err != nil {
+		log.Printf("Error getting visits: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, `<!DOCTYPE html>
+		<html>
+		<head><title>Shorty</title></head>
+		<body>
+		<h2>Visits to /%v</h2>
+		<pre>%v</pre>
+		<p>Visit detail, most recent first.</p>
+		<table border="2">
+		<tr><th>Device</th><th>OS</th><th>Browser</th><th>IP</th><th>Time</th></tr>
+		`, url.Slug, url.URL)
+	for _, v := range visits {
+		fmt.Fprintf(w, `<tr><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td></tr>`, v.Device, v.OS, v.Browser, v.IP, v.Time)
+	}
+	fmt.Fprint(w, `</table>
+		</body>
+		</html>
+		`)
 }
