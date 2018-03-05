@@ -64,7 +64,7 @@ func (ds datastore) GetURLBySlug(ctx context.Context, slug string) (*URLMap, err
 	row := ds.db.QueryRow(`SELECT id, slug, url FROM url WHERE slug = ?`, slug)
 	err := row.Scan(&url.ID, &url.Slug, &url.URL)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return &URLMap{}, nil
 	}
 	if err != nil {
 		return nil, err
