@@ -10,10 +10,6 @@ import (
 	"github.com/dabfleming/shorty/internal/slugs"
 )
 
-var (
-	urls map[string]string
-)
-
 const defaultSlugLength = 7
 
 // Server models our http server
@@ -24,11 +20,6 @@ type Server struct {
 
 // New returns a new server
 func New(ds datastore.Datastore) (Server, error) {
-	urls = map[string]string{
-		"foo": "https://www.google.ca",
-		"bar": "https://twitter.com",
-	}
-
 	s := Server{
 		ds: ds,
 	}
