@@ -40,6 +40,7 @@ func (s *Server) Go() {
 	log.Fatal(http.ListenAndServe(":8080", s.mux))
 }
 
+// logMiddleware logs some basic data on each request for debugging
 func (s *Server) logMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%v %v\n", r.Method, r.URL.Path)
@@ -77,6 +78,8 @@ func (s *Server) routerHandler(w http.ResponseWriter, r *http.Request) {
 		`)
 }
 
+// forwardHandler forwards from a short url to the destination url
+// it also saves tracking information
 func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	url, err := s.ds.GetURLBySlug(ctx, r.URL.Path[1:])
@@ -107,6 +110,7 @@ func (s *Server) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// newLinkHandler handles a request to create a new short url
 func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -146,7 +150,6 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Request to save to DB
-	log.Printf("Requested '%v' link to '%v'.", slug, url) // TODO Remove dubug output
 	err = s.ds.SaveNewURL(ctx, slug, url)
 	if err != nil && strings.HasPrefix(err.Error(), "Error 1062") {
 		// Duplicate slug
@@ -171,6 +174,7 @@ func (s *Server) newLinkHandler(w http.ResponseWriter, r *http.Request) {
 		</body></html>`, slug, slug, url)
 }
 
+// infoHandler displays visit counts for each short url
 func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slug := strings.TrimPrefix(r.URL.Path, "/info/")
@@ -204,11 +208,11 @@ func (s *Server) infoHandler(w http.ResponseWriter, r *http.Request) {
 		`)
 }
 
+// infoDetailHandler displays visit details for a single short url
 func (s *Server) infoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slug := strings.TrimPrefix(r.URL.Path, "/info/")
 
-	log.Printf("Lookup on slug: %v", slug)
 	url, visits, err := s.ds.GetVisits(ctx, slug)
 	if err != nil {
 		log.Printf("Error getting visits: %v", err)

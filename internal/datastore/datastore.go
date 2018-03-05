@@ -8,6 +8,7 @@ import (
 	"github.com/ua-parser/uap-go/uaparser"
 )
 
+// Datastore is the exported interface for our datastore
 type Datastore interface {
 	// URLs
 	GetURLBySlug(ctx context.Context, slug string) (*URLMap, error)
@@ -21,12 +22,14 @@ type Datastore interface {
 	GetVisits(ctx context.Context, slug string) (*URLMap, []Visit, error)
 }
 
+// URLMap models our basic short url to long url relationship, or the url table
 type URLMap struct {
 	ID   int
 	Slug string
 	URL  string
 }
 
+// Visit models a single visit record for a short url
 type Visit struct {
 	ID      int
 	Device  string
@@ -36,6 +39,7 @@ type Visit struct {
 	Time    time.Time
 }
 
+// VisitCount models aggregate visit data for a short url
 type VisitCount struct {
 	Slug  string
 	URL   string
@@ -46,6 +50,7 @@ type datastore struct {
 	db *sql.DB
 }
 
+// New creates a new Datastore, given a database connection
 func New(db *sql.DB) (Datastore, error) {
 	ds := datastore{
 		db: db,
